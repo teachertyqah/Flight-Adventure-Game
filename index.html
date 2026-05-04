@@ -3,231 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aeroplane Adventure: Radio Edition</title>
+    <title>Flight Adventure v3 (Stable)</title>
     <style>
-        :root {
-            --sky-top: #1e90ff;
-            --sky-bottom: #a2d2ff;
-            --grass: #27ae60;
-            --sun-color: #f1c40f;
-            --btn-red: #ee5253;
-        }
-
-        body {
-            margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif;
-            background-color: #f0f2f5; overflow: hidden;
-            display: flex; flex-direction: column; align-items: center;
-        }
-
-        #game-viewport {
-            position: relative; width: 100vw; height: 55vh;
-            background: linear-gradient(to bottom, var(--sky-top), var(--sky-bottom));
-            overflow: hidden; border-bottom: 12px solid var(--grass);
-        }
-
-        .sun {
-            position: absolute; top: 30px; right: 50px; width: 70px; height: 70px;
-            background: var(--sun-color); border-radius: 50%; box-shadow: 0 0 40px #f39c12;
-        }
-
-        .cloud { position: absolute; color: white; font-size: 50px; opacity: 0.5; z-index: 1; }
-
-        #plane {
-            position: absolute; left: 10%; top: 40%; font-size: 65px;
-            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 10; display: inline-block; filter: drop-shadow(5px 10px 5px rgba(0,0,0,0.2));
-        }
-
-        .crash-anim {
-            transform: rotate(140deg) translateY(600px) !important;
-            transition: transform 1.5s ease-in !important; filter: grayscale(1) !important;
-        }
-
-        #ui-panel {
-            width: 90%; max-width: 700px; margin-top: -30px;
-            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
-            border-radius: 20px; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-            text-align: center; z-index: 100;
-        }
-
-        #score-tag {
-            background: #2c3e50; color: #f1c40f; display: inline-block;
-            padding: 5px 20px; border-radius: 50px; font-weight: bold; margin-bottom: 10px;
-        }
-
-        #sentence-display { font-size: 1.4rem; color: #2c3e50; margin: 15px 0; font-weight: 600; min-height: 50px; }
-
-        .btn-main {
-            background: #2c3e50; color: white; border: none; padding: 20px 50px;
-            font-size: 1.3rem; font-weight: bold; border-radius: 15px; cursor: pointer;
-            box-shadow: 0 6px 0 #1a252f; transition: 0.1s; user-select: none;
-        }
-
-        .btn-main:active { transform: translateY(4px); box-shadow: 0 2px 0 #1a252f; }
-
-        /* Recording State */
-        .recording {
-            background: var(--btn-red) !important;
-            box-shadow: 0 0 20px var(--btn-red) !important;
-            animation: pulse-red 1s infinite;
-        }
-
-        @keyframes pulse-red {
-            0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; }
-        }
-
-        #status-msg { margin-top: 10px; color: #7f8c8d; font-weight: bold; }
+        body { margin: 0; text-align: center; font-family: sans-serif; background: #87CEEB; }
+        #game-area { position: relative; width: 100%; height: 50vh; background: #1e90ff; overflow: hidden; border-bottom: 10px solid #2ecc71; }
+        #plane { position: absolute; left: 10%; top: 40%; font-size: 50px; transition: all 0.8s; }
+        .crash { transform: rotate(120deg) translateY(500px) !important; }
+        #panel { padding: 20px; background: white; margin: 10px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .btn { padding: 15px 30px; font-size: 1.2rem; cursor: pointer; border-radius: 50px; border: none; background: #f39c12; color: white; font-weight: bold; }
+        .btn:disabled { background: #bdc3c7; }
+        .listening { background: #e74c3c !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        #score { font-size: 1.5rem; font-weight: bold; color: #2c3e50; }
     </style>
 </head>
 <body>
 
-<div id="game-viewport">
-    <div class="sun"></div>
+<div id="game-area">
     <div id="plane">✈️</div>
 </div>
 
-<div id="ui-panel">
-    <div id="score-tag">POINTS: 0</div>
-    <div id="sentence-display">Click START to begin.</div>
-    <div id="feedback-msg" style="height: 25px; font-weight: bold; margin-bottom: 5px;"></div>
+<div id="panel">
+    <div id="score">POINTS: 0</div>
+    <p id="sentence">Click START MISSION to begin</p>
+    <p id="status" style="color: #7f8c8d;">Microphone is off</p>
     
-    <button id="action-btn" class="btn-main">START MISSION</button>
-    <div id="status-msg">Ready for orders, Captain.</div>
+    <button id="main-btn" class="btn" onclick="handleBtn()">START MISSION</button>
 </div>
 
 <script>
-    const journeyTasks = [
-        { s: "I travel by aeroplane during my holiday.", key: "aeroplane" },
-        { s: "My journey to school takes twenty minutes.", key: "journey" },
-        { s: "We arrived at the airport early in the morning.", key: "airport" },
-        { s: "The passenger is waiting for the bus.", key: "passenger" },
-        { s: "I bought a ticket for the train.", key: "ticket" },
-        { s: "The train station is very crowded today.", key: "station" },
-        { s: "He rides his bicycle to the park.", key: "bicycle" },
-        { s: "My brother has a new motorcycle.", key: "motorcycle" },
-        { s: "We are going on a long journey tomorrow.", key: "journey" },
-        { s: "The aeroplane is taking off now.", key: "taking off" }
+    const tasks = [
+        { s: "I travel by aeroplane during my holiday.", k: "aeroplane" },
+        { s: "My journey to school takes twenty minutes.", k: "minutes" },
+        { s: "We arrived at the airport early in the morning.", k: "airport" },
+        { s: "The passenger is waiting for the bus.", k: "passenger" },
+        { s: "I bought a ticket for the train.", k: "ticket" },
+        { s: "The train station is very crowded today.", k: "station" },
+        { s: "He rides his bicycle to the park.", k: "bicycle" },
+        { s: "My brother has a new motorcycle.", k: "motorcycle" },
+        { s: "We are going on a long journey tomorrow.", k: "journey" },
+        { s: "The aeroplane is taking off now.", k: "taking off" }
     ];
 
-    let currentIdx = 0, currentScore = 0, isCrashed = false, isPlaying = false;
-    const plane = document.getElementById('plane'), sentenceDisplay = document.getElementById('sentence-display');
-    const scoreTag = document.getElementById('score-tag'), actionBtn = document.getElementById('action-btn');
-    const feedback = document.getElementById('feedback-msg'), statusMsg = document.getElementById('status-msg');
+    let current = 0;
+    let score = 0;
+    let isListening = false;
 
-    // --- AUDIO ENGINE ---
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSound(type) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        if (type === 'radio') { // Static "Hold" sound
-            osc.type = 'brown'; // Noise simulation
-            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
-        } else if (type === 'success') {
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        } else if (type === 'crash') {
-            osc.type = 'sawtooth'; osc.frequency.value = 100;
-            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
-        }
-        osc.start(); osc.stop(audioCtx.currentTime + 0.6);
-    }
-
-    // --- SPEECH RECOGNITION ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = SpeechRecognition ? new SpeechRecognition() : null;
-    if(recognition) { recognition.lang = 'en-US'; recognition.continuous = false; }
 
-    // --- HOLD TO SPEAK LOGIC ---
-    function startListening() {
-        if (!recognition || isCrashed) return;
-        try {
-            recognition.start();
-            playSound('radio');
-            actionBtn.classList.add('recording');
-            actionBtn.innerText = "HOLDING: SPEAK NOW";
-            statusMsg.innerText = "Listening to radio transmission...";
-        } catch(e) {}
-    }
+    if (recognition) {
+        recognition.lang = 'en-US';
+        recognition.continuous = false;
+        recognition.interimResults = false;
 
-    function stopListening() {
-        if (!recognition || isCrashed) return;
-        recognition.stop();
-        actionBtn.classList.remove('recording');
-        actionBtn.innerText = "HOLD TO SPEAK";
-    }
-
-    // Event Listeners for both Mouse and Touch (Mobile/Tablet)
-    actionBtn.addEventListener('mousedown', () => { if(isPlaying) startListening(); });
-    actionBtn.addEventListener('mouseup', () => { if(isPlaying) stopListening(); });
-    actionBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if(isPlaying) startListening(); });
-    actionBtn.addEventListener('touchend', (e) => { e.preventDefault(); if(isPlaying) stopListening(); });
-
-    actionBtn.onclick = () => {
-        if (!isPlaying || isCrashed || currentIdx >= journeyTasks.length) {
-            audioCtx.resume();
-            startNewGame();
-        }
-    };
-
-    function startNewGame() {
-        currentIdx = 0; currentScore = 0; isCrashed = false; isPlaying = true;
-        scoreTag.innerText = "POINTS: 0";
-        plane.classList.remove('crash-anim');
-        plane.style.left = "10%"; plane.style.top = "40%"; plane.style.transform = "rotate(0deg)";
-        feedback.innerText = "";
-        actionBtn.innerText = "HOLD TO SPEAK";
-        updateTask();
-        statusMsg.innerText = "Press and hold the button to talk.";
-    }
-
-    function updateTask() {
-        sentenceDisplay.innerHTML = `<span style="font-size:0.8rem; color:#7f8c8d;">COMMAND:</span><br>${journeyTasks[currentIdx].s}`;
-    }
-
-    if(recognition) {
-        recognition.onresult = (event) => {
-            const result = event.results[0][0].transcript.toLowerCase();
-            const targetKey = journeyTasks[currentIdx].key.toLowerCase();
-            if (result.includes(targetKey)) {
-                currentScore += 10;
-                scoreTag.innerText = `POINTS: ${currentScore}`;
-                feedback.innerText = "✓ TRANSMISSION CLEAR! +10";
-                feedback.style.color = "#27ae60";
-                playSound('success');
-                plane.style.left = (parseFloat(plane.style.left) + 8.5) + "%";
-                currentIdx++;
-                if(currentIdx >= journeyTasks.length) {
-                    sentenceDisplay.innerHTML = "🏆 MISSION COMPLETE PILOT!";
-                    actionBtn.innerText = "RESTART"; isPlaying = false;
-                } else {
-                    setTimeout(() => { feedback.innerText = ""; updateTask(); }, 1200);
-                }
-            } else {
-                isCrashed = true; isPlaying = false;
-                playSound('crash');
-                plane.classList.add('crash-anim');
-                feedback.innerText = "⚠ SIGNAL LOST: CRASH!";
-                feedback.style.color = "#e74c3c";
-                setTimeout(() => { 
-                    sentenceDisplay.innerHTML = `<span style="color:#e74c3c">GAME OVER</span><br>Score: ${currentScore}`;
-                    actionBtn.innerText = "TRY AGAIN";
-                }, 1500);
-            }
+        recognition.onstart = () => {
+            isListening = true;
+            document.getElementById('main-btn').innerText = "STOP & CHECK";
+            document.getElementById('main-btn').classList.add('listening');
+            document.getElementById('status').innerText = "🔴 Listening... Speak now!";
         };
+
+        recognition.onresult = (event) => {
+            const said = event.results[0][0].transcript.toLowerCase();
+            document.getElementById('status').innerText = "I heard: " + said;
+            check(said);
+        };
+
+        recognition.onerror = (e) => {
+            stop();
+            document.getElementById('status').innerText = "Error: Mic not found or blocked.";
+        };
+
+        recognition.onend = () => { stop(); };
     }
 
-    // Init Sky
-    (function(){
-        const v = document.getElementById('game-viewport');
-        for(let i=0; i<5; i++){
-            let c = document.createElement('div'); c.className = 'cloud'; c.innerText='☁️';
-            c.style.top=Math.random()*40+'%'; c.style.left=Math.random()*90+'%'; v.appendChild(c);
+    function handleBtn() {
+        if (!recognition) return alert("Browser not supported!");
+        
+        const btn = document.getElementById('main-btn');
+        if (btn.innerText === "START MISSION" || btn.innerText === "RETRY" || btn.innerText === "PLAY AGAIN") {
+            reset();
+        } else if (!isListening) {
+            recognition.start();
+        } else {
+            recognition.stop();
         }
-    })();
+    }
+
+    function stop() {
+        isListening = false;
+        document.getElementById('main-btn').innerText = "🎤 CLICK TO SPEAK";
+        document.getElementById('main-btn').classList.remove('listening');
+    }
+
+    function reset() {
+        current = 0; score = 0;
+        document.getElementById('score').innerText = "POINTS: 0";
+        document.getElementById('plane').className = "";
+        document.getElementById('plane').style.left = "10%";
+        document.getElementById('plane').style.top = "40%";
+        document.getElementById('main-btn').innerText = "🎤 CLICK TO SPEAK";
+        document.getElementById('sentence').innerText = tasks[0].s;
+    }
+
+    function check(said) {
+        if (said.includes(tasks[current].k)) {
+            score += 10;
+            document.getElementById('score').innerText = "POINTS: " + score;
+            document.getElementById('plane').style.left = (parseInt(document.getElementById('plane').style.left) + 8) + "%";
+            current++;
+            if (current >= tasks.length) {
+                document.getElementById('sentence').innerText = "🏆 MISSION COMPLETE!";
+                document.getElementById('main-btn').innerText = "PLAY AGAIN";
+            } else {
+                document.getElementById('sentence').innerText = tasks[current].s;
+            }
+        } else {
+            document.getElementById('plane').classList.add('crash');
+            document.getElementById('sentence').innerText = "💥 CRASHED! Final Score: " + score;
+            document.getElementById('main-btn').innerText = "RETRY";
+        }
+    }
 </script>
+
 </body>
 </html>
